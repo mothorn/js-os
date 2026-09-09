@@ -1,0 +1,19 @@
+{
+  "name": "js-os",
+  "version": "4.0.0",
+  "description": "Retro Windows 2000-style web OS with chat, AI (Gemini), video, and voice calls",
+  "main": "server.js",
+  "type": "commonjs",
+  "private": true,
+  "license": "ISC",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}

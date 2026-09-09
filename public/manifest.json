@@ -1,0 +1,17 @@
+{
+    "id": "/",
+    "name": "JS OS",
+    "short_name": "JS OS",
+    "description": "A retro Windows 2000-style web desktop with chat, AI, video and voice calls.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#1e1e1e",
+    "theme_color": "#F7DF1E",
+    "icons": [
+        { "src": "images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "images/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+}

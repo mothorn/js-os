@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>JS OS</title>
+    <meta name="description" content="A retro Windows 2000-style web desktop with chat, AI, video and voice calls.">
+    <meta name="theme-color" content="#F7DF1E">
+    <meta name="color-scheme" content="dark">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JS OS">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Sound effects -->
+    <audio id="sound-startup" src="sounds/startup.mp3" preload="auto"></audio>
+    <audio id="sound-message" src="sounds/message_sent.mp3" preload="auto"></audio>
+    <audio id="sound-window" src="sounds/minimize_fullscreen_close.mp3" preload="auto"></audio>
+    <!-- Remote call audio elements are attached here -->
+    <div id="remote-audio" hidden></div>
+
+    <div class="copy-toast" id="copy-toast" role="status" aria-live="polite"></div>
+
+    <!-- Splash screen -->
+    <div id="splash" role="button" tabindex="0" aria-label="Enter JS OS">
+        <img class="splash-logo" src="images/logo.png" alt="">
+        <div class="splash-title" data-name="os">JS OS</div>
+        <div class="splash-subtitle">Click anywhere to enter</div>
+    </div>
+
+    <!-- Background pattern -->
+    <div class="bg-pattern" aria-hidden="true"></div>
+
+    <!-- Desktop: all windows live here -->
+    <div id="desktop">
+
+        <!-- File Explorer -->
+        <section class="window explorer" id="explorer-window" aria-label="My Applications" hidden>
+            <div class="titlebar">
+                <span class="titlebar-title">My Applications</span>
+                <div class="titlebar-buttons">
+                    <button class="window-btn btn-minimize" data-action="minimize" title="Minimize" aria-label="Minimize" disabled>&ndash;</button>
+                    <button class="window-btn btn-maximize" data-action="maximize" title="Maximize" aria-label="Maximize">&square;</button>
+                    <button class="window-btn btn-close" data-action="close" title="Log off" aria-label="Log off">&times;</button>
+                </div>
+            </div>
+            <div class="explorer-toolbar">
+                <span class="explorer-toolbar-btn">Back</span>
+                <span class="explorer-toolbar-btn">Forward</span>
+                <div class="explorer-address">C:\Applications\</div>
+            </div>
+            <div class="explorer-body app-view">
+                <div class="explorer-sidebar">
+                    <div class="sidebar-header">Folders</div>
+                    <div class="sidebar-item">Desktop</div>
+                    <div class="sidebar-item">Documents</div>
+                    <div class="sidebar-item active">Applications</div>
+                    <div class="sidebar-item">Downloads</div>
+                    <div class="sidebar-item">Recycle Bin</div>
+                </div>
+                <div class="explorer-files grow-area">
+                    <div class="file-icon" id="app-icon" role="button" tabindex="0">
+                        <div class="file-icon-img app-js">{ }</div>
+                        <div class="file-icon-label" data-name="chat">JS Chat</div>
+                    </div>
+                    <div class="file-icon" id="ai-icon" role="button" tabindex="0">
+                        <div class="file-icon-img app-glyph">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="#323330"/></svg>
+                        </div>
+                        <div class="file-icon-label" data-name="ai">JS AI</div>
+                    </div>
+                    <div class="file-icon" id="jstube-icon" role="button" tabindex="0">
+                        <div class="file-icon-img app-glyph">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#323330" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10 8 16 12 10 16 10 8" fill="#323330"/></svg>
+                        </div>
+                        <div class="file-icon-label" data-name="tube">JSTube</div>
+                    </div>
+                    <div class="file-icon" id="call-icon" role="button" tabindex="0">
+                        <div class="file-icon-img app-glyph">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#323330" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </div>
+                        <div class="file-icon-label" data-name="call">JS Call</div>
+                    </div>
+                </div>
+            </div>
+            <div class="explorer-statusbar">
+                <span id="explorer-status-left">4 objects</span>
+                <span class="explorer-status-right">
+                    <button class="install-btn" id="install-btn" type="button" hidden>Install app</button>
+                    <span id="explorer-status-right">Ready</span>
+                </span>
+            </div>
+        </section>
+
+        <!-- JS Chat -->
+        <section class="window chat-app" id="chat-window" aria-label="JS Chat" hidden>
+            <div class="titlebar">
+                <span class="titlebar-title" id="window-title" data-name="chat" data-name-prefix="{ } ">{ } JS Chat</span>
+                <div class="titlebar-buttons">
+                    <button class="window-btn btn-minimize" data-action="minimize" title="Minimize" aria-label="Minimize">&ndash;</button>
+                    <button class="window-btn btn-maximize" data-action="maximize" title="Maximize" aria-label="Maximize">&square;</button>
+                    <button class="window-btn btn-close" data-action="close" title="Close" aria-label="Close">&times;</button>
+                </div>
+            </div>
+            <div class="top-bar">
+                <span class="app-brand" data-name="chat">JS Chat</span>
+                <span class="top-bar-links">Welcome! | <a href="#" data-dialog="help-chat">Help</a> | <a href="#" data-dialog="about">About</a></span>
+            </div>
+
+            <!-- Lobby -->
+            <div class="lobby app-view" id="lobby">
+                <label for="lobby-username">Your Name:</label>
+                <input type="text" id="lobby-username" placeholder="Username" maxlength="20" autocomplete="nickname" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+                <div class="lobby-actions">
+                    <button class="lobby-btn" id="btn-create" type="button">Create Room</button>
+                </div>
+                <div class="lobby-divider">&mdash; or join an existing room &mdash;</div>
+                <label for="lobby-code">Room Code:</label>
+                <input type="text" id="lobby-code" class="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go">
+                <div class="lobby-actions">
+                    <button class="lobby-btn" id="btn-join" type="button">Join Room</button>
+                </div>
+                <div class="error-msg" id="lobby-error" role="alert"></div>
+            </div>
+
+            <!-- Chat view -->
+            <div class="chat-view app-view" id="chat-view" hidden>
+                <div class="room-info">
+                    <span>Room: <button class="code-label" id="room-code-display" type="button" title="Click to copy"></button></span>
+                    <span class="room-info-right">
+                        <span id="user-count"></span>
+                        <button class="panel-toggle" id="user-panel-toggle" type="button" aria-expanded="true" aria-controls="user-panel">Users</button>
+                    </span>
+                </div>
+                <div class="chat-body grow-area">
+                    <div class="messages" id="messages" role="log" aria-live="polite"></div>
+                    <aside class="user-panel" id="user-panel">
+                        <div class="user-panel-header">Users</div>
+                        <ul class="user-list" id="user-list"></ul>
+                    </aside>
+                </div>
+                <div class="image-preview-bar" id="image-preview" hidden>
+                    <img id="image-preview-img" src="" alt="Preview">
+                    <span class="preview-label">Image attached</span>
+                    <button class="preview-remove" id="image-preview-remove" type="button" title="Remove image" aria-label="Remove image">&times;</button>
+                </div>
+                <form class="input-area" id="chat-form">
+                    <label class="input-label" for="message">Message:</label>
+                    <input type="text" id="message" placeholder="Type here..." maxlength="10000" autocomplete="off" enterkeyhint="send" aria-label="Message">
+                    <input type="file" id="image-file" accept="image/*" hidden>
+                    <button type="button" class="attach-btn" id="attach-btn" title="Attach image" aria-label="Attach image">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                    </button>
+                    <button type="submit" class="send-btn">Send</button>
+                </form>
+                <div class="chat-statusbar">
+                    <span><span class="status-indicator" id="chat-status-indicator"></span>Logged in as <span class="status-user" id="status-username"></span></span>
+                    <span class="status-right" id="chat-status-right">Connected</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- JS AI -->
+        <section class="window ai-app" id="ai-window" aria-label="JS AI" hidden>
+            <div class="titlebar">
+                <span class="titlebar-title" id="ai-title" data-name="ai" data-name-prefix="&#10024; ">&#10024; JS AI</span>
+                <div class="titlebar-buttons">
+                    <button class="window-btn btn-minimize" data-action="minimize" title="Minimize" aria-label="Minimize">&ndash;</button>
+                    <button class="window-btn btn-maximize" data-action="maximize" title="Maximize" aria-label="Maximize">&square;</button>
+                    <button class="window-btn btn-close" data-action="close" title="Close" aria-label="Close">&times;</button>
+                </div>
+            </div>
+
+            <!-- Conversation lobby -->
+            <div class="ai-lobby app-view" id="ai-lobby">
+                <div class="ai-lobby-bar">
+                    <span class="ai-lobby-title">My Conversations</span>
+                    <div class="ai-lobby-actions">
+                        <button class="ai-lib-btn ai-lib-btn-add" id="ai-new-btn" type="button" title="New conversation" aria-label="New conversation">+</button>
+                        <button class="ai-lib-btn ai-lib-btn-del" id="ai-del-btn" type="button" title="Delete selected" aria-label="Delete selected conversation" disabled>&minus;</button>
+                    </div>
+                </div>
+                <div class="ai-conv-list grow-area" id="ai-conv-list" role="listbox" aria-label="Conversations"></div>
+            </div>
+
+            <!-- Chat view -->
+            <div class="ai-chat app-view" id="ai-chat" hidden>
+                <div class="ai-chat-header">
+                    <button id="ai-back-btn" class="ai-back-btn" type="button" title="Back to conversations">&#9664; Back</button>
+                    <span class="ai-conv-title" id="ai-conv-title">Conversation</span>
+                </div>
+                <div class="ai-messages grow-area" id="ai-messages" aria-label="Conversation"></div>
+                <div class="sr-only" id="ai-announcer" aria-live="polite"></div>
+                <button class="ai-stop-btn" id="ai-stop-btn" type="button" hidden>Stop generating</button>
+                <form class="input-area" id="ai-form">
+                    <label class="input-label" for="ai-input">Ask:</label>
+                    <input type="text" id="ai-input" placeholder="Ask JS AI anything..." autocomplete="off" enterkeyhint="send" aria-label="Ask JS AI">
+                    <button type="submit" class="send-btn" id="ai-send-btn">Send</button>
+                </form>
+            </div>
+
+            <div class="chat-statusbar">
+                <span><span data-name="ai" data-name-prefix="&#10024; ">&#10024; JS AI</span> <span class="status-model" id="ai-model"></span></span>
+                <span class="status-right" id="ai-status-text" aria-live="polite">Ready</span>
+            </div>
+        </section>
+
+        <!-- JSTube -->
+        <section class="window jstube-app" id="jstube-window" aria-label="JSTube" hidden>
+            <div class="titlebar">
+                <span class="titlebar-title" id="jstube-title" data-name="tube">JSTube</span>
+                <div class="titlebar-buttons">
+                    <button class="window-btn btn-minimize" data-action="minimize" title="Minimize" aria-label="Minimize">&ndash;</button>
+                    <button class="window-btn btn-maximize" data-action="maximize" title="Maximize" aria-label="Maximize">&square;</button>
+                    <button class="window-btn btn-close" data-action="close" title="Close" aria-label="Close">&times;</button>
+                </div>
+            </div>
+            <div class="top-bar">
+                <form id="jstube-search-form" class="jstube-search-form" role="search">
+                    <span class="app-brand app-brand-small" data-name="tube">JSTube</span>
+                    <input type="search" id="jstube-search" class="jstube-search-input" placeholder="Search videos..." autocomplete="off" enterkeyhint="search" aria-label="Search videos">
+                    <button type="submit" class="send-btn send-btn-small">Search</button>
+                </form>
+            </div>
+
+            <!-- Player (shown while a video is open) -->
+            <div class="jstube-player app-view" id="jstube-player" hidden>
+                <div class="jstube-player-container" id="jstube-player-container"></div>
+                <div class="jstube-video-info" id="jstube-video-info"></div>
+                <div class="jstube-player-actions">
+                    <button class="lobby-btn lobby-btn-small" id="jstube-back-btn" type="button">&#9664; Back to results</button>
+                </div>
+            </div>
+
+            <!-- Search results -->
+            <div class="jstube-results grow-area" id="jstube-results">
+                <div class="jstube-placeholder">Search for videos to get started</div>
+            </div>
+
+            <div class="chat-statusbar">
+                <span id="jstube-status">Ready</span>
+            </div>
+        </section>
+
+        <!-- JS Call -->
+        <section class="window call-app" id="call-window" aria-label="JS Call" hidden>
+            <div class="titlebar">
+                <span class="titlebar-title" id="call-title" data-name="call">JS Call</span>
+                <div class="titlebar-buttons">
+                    <button class="window-btn btn-minimize" data-action="minimize" title="Minimize" aria-label="Minimize">&ndash;</button>
+                    <button class="window-btn btn-maximize" data-action="maximize" title="Maximize" aria-label="Maximize">&square;</button>
+                    <button class="window-btn btn-close" data-action="close" title="Close" aria-label="Close">&times;</button>
+                </div>
+            </div>
+            <div class="top-bar">
+                <span class="app-brand" data-name="call">JS Call</span>
+                <span class="top-bar-links">Voice Chat | <a href="#" data-dialog="help-call">Help</a></span>
+            </div>
+
+            <!-- Call lobby -->
+            <div class="lobby app-view" id="call-lobby">
+                <label for="call-username">Your Name:</label>
+                <input type="text" id="call-username" placeholder="Username" maxlength="20" autocomplete="nickname" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+                <div class="lobby-actions">
+                    <button class="lobby-btn" id="btn-create-call" type="button">Create Call</button>
+                </div>
+                <div class="lobby-divider">&mdash; or join an existing call &mdash;</div>
+                <label for="call-code">Room Code:</label>
+                <input type="text" id="call-code" class="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go">
+                <div class="lobby-actions">
+                    <button class="lobby-btn" id="btn-join-call" type="button">Join Call</button>
+                </div>
+                <div class="error-msg" id="call-error" role="alert"></div>
+            </div>
+
+            <!-- Call view -->
+            <div class="call-view app-view" id="call-view" hidden>
+                <div class="room-info">
+                    <span>Call: <button class="code-label" id="call-code-display" type="button" title="Click to copy"></button></span>
+                    <span id="call-user-count"></span>
+                </div>
+                <div class="call-body grow-area">
+                    <div class="call-users-grid" id="call-users-grid"></div>
+                </div>
+                <div class="call-controls">
+                    <button class="call-btn call-btn-mute" id="call-mute-btn" type="button" title="Mute or unmute your microphone" aria-pressed="false">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                        <span id="mute-label">Mute</span>
+                    </button>
+                    <button class="call-btn call-btn-leave" id="call-leave-btn" type="button" title="Leave the call">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.11 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91"/>
+                            <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                        Leave
+                    </button>
+                </div>
+                <div class="chat-statusbar">
+                    <span><span class="status-indicator"></span>Logged in as <span class="status-user" id="call-status-username"></span></span>
+                    <span class="status-right" id="call-status-right">In call</span>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/clients.js"></script>
+    <script src="js/apps/chat.js"></script>
+    <script src="js/apps/ai.js"></script>
+    <script src="js/apps/tube.js"></script>
+    <script src="js/apps/call.js"></script>
+    <script src="js/desktop.js"></script>
+</body>
+
+</html>
