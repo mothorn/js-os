@@ -5,7 +5,7 @@
 
 'use strict';
 
-const JSOS_VERSION = '4.0.0';
+const JSOS_VERSION = '4.1.0';
 
 const HELP_TEXT = {
     'help-chat': {
@@ -16,12 +16,12 @@ const HELP_TEXT = {
     'help-call': {
         title: 'JS Call Help',
         html: '<p>Enter a name and <strong>Create Call</strong>, then share the code. Joining needs microphone permission.</p>' +
-              '<p>Audio goes directly between browsers (WebRTC), so voice calls need an HTTPS address unless you are on localhost. Use <strong>Mute</strong> to silence your microphone.</p>',
+              '<p>Audio goes directly between browsers (WebRTC); when this server has a TURN relay set up, it takes over if a network blocks the direct path. Voice calls need an HTTPS address unless you are on localhost. Use <strong>Mute</strong> to silence your microphone.</p>',
     },
     'about': {
         title: 'About JS OS',
         html: '<p><strong>JS OS</strong> v' + JSOS_VERSION + '</p>' +
-              '<p>A retro Windows 2000-style web desktop with chat, AI, video and voice calls. Built with vanilla JavaScript, Node.js and WebSockets. No frameworks.</p>',
+              '<p>A retro Windows 2000-style web desktop with chat, AI, a built-in video player and voice calls. Built with vanilla JavaScript, Node.js and WebSockets. No frameworks.</p>',
     },
 };
 

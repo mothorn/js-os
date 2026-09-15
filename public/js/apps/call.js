@@ -83,6 +83,7 @@ class JSCallApp extends BaseApp {
             else this._speaking.delete(id);
             this._renderUsers();
         };
+        this.client.onPath = () => this._renderPath();
         this.client.onError = (message) => { this._setBusy(false); this.desktop.showErrorDialog(message); };
         this.client.onDisconnect = (reason) => {
             this._showLobby();
@@ -154,6 +155,12 @@ class JSCallApp extends BaseApp {
     }
 
     // ─── Rendering ───
+    _renderPath() {
+        if (!this.client.inCall) return;
+        const paths = [...this.client.paths.values()];
+        this.els.statusRight.textContent = 'In call' + (paths.length ? (paths.includes('relay') ? ' · relayed' : ' · direct') : '');
+    }
+
     _renderUsers() {
         this.els.usersGrid.innerHTML = '';
         for (const user of this._users) {

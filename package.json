@@ -1,7 +1,7 @@
 {
   "name": "js-os",
-  "version": "4.0.0",
-  "description": "Retro Windows 2000-style web OS with chat, AI (Gemini), video, and voice calls",
+  "version": "4.1.0",
+  "description": "Retro Windows 2000-style web OS with chat, AI (Gemini), a built-in video player, and voice calls",
   "main": "server.js",
   "type": "commonjs",
   "private": true,
@@ -14,6 +14,8 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "port-mapper": "^0.1.3",
+    "turn-server": "^0.6.6",
     "ws": "^8.21.3"
   }
 }

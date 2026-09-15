@@ -455,7 +455,7 @@ class JSAIApp extends BaseApp {
         div.className = 'ai-message ai-message-assistant streaming';
         const content = document.createElement('div');
         content.className = 'ai-message-content';
-        content.innerHTML = '<span class="ai-thinking">Thinking<span class="ai-dots"></span></span>';
+        content.innerHTML = '<span class="ai-thinking">Thinking<span class="ai-dots" aria-hidden="true"><i></i><i></i><i></i></span></span>';
         div.appendChild(content);
         this.els.messages.appendChild(div);
         return div;

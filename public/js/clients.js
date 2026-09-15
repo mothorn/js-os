@@ -197,9 +197,12 @@ class CallClient {
         this._meterTimer = null;
         this._intentionalClose = false;
         this._audioHost = $('remote-audio');
+        this.iceServers = null;         // STUN/TURN list the server handed us for this call
+        this.paths = new Map();         // peerId → 'direct' | 'relay' once connected
         this.onJoined = null;           // (code)
         this.onUsers = null;            // ([{ peerId, username, muted }])
         this.onSpeaking = null;         // (peerId | 'self', speaking)
+        this.onPath = null;             // (peerId, 'direct' | 'relay' | null)
         this.onError = null;            // (message)
         this.onDisconnect = null;       // (reason)
     }
@@ -301,6 +304,8 @@ class CallClient {
         this._meters.clear();
         for (const peerId of [...this.peers.keys()]) this._removePeer(peerId);
         this.names.clear();
+        this.paths.clear();
+        this.iceServers = null;
         if (this.localStream) { this.localStream.getTracks().forEach((track) => track.stop()); this.localStream = null; }
         if (this.ws) {
             const ws = this.ws;
@@ -325,6 +330,11 @@ class CallClient {
                 this.roomCode = msg.code;
                 this.peerId = msg.peerId;
                 if (typeof msg.session === 'string') this.session = msg.session;
+                this.iceServers = CallClient.sanitizeIceServers(msg.iceServers);
+                if (this.iceServers) {
+                    const relays = this.iceServers.filter((s) => s.urls.some((u) => u.startsWith('turn'))).length;
+                    log.info('WEBRTC', 'ICE servers:', this.iceServers.length, '(' + relays + ' TURN)');
+                }
                 const peers = Array.isArray(msg.peers) ? msg.peers : [];
                 for (const peer of peers) this.names.set(peer.peerId, peer.username);
                 log.info('CALL', 'Joined call', msg.code, 'with', peers.length, 'existing peer(s)');
@@ -360,7 +370,7 @@ class CallClient {
 
     _createPeer(peerId, initiator) {
         this._removePeer(peerId);
-        const pc = new RTCPeerConnection({ iceServers: CallClient.ICE_SERVERS });
+        const pc = new RTCPeerConnection({ iceServers: this.iceServers || CallClient.ICE_SERVERS, iceTransportPolicy: CallClient.ICE_TRANSPORT_POLICY });
         const peer = { pc, audio: null, pendingCandidates: [], remoteReady: false };
         this.peers.set(peerId, peer);
         if (this.localStream) this.localStream.getTracks().forEach((track) => pc.addTrack(track, this.localStream));
@@ -385,6 +395,7 @@ class CallClient {
         };
         pc.onconnectionstatechange = () => {
             log.debug('WEBRTC', peerId, pc.connectionState);
+            if (pc.connectionState === 'connected') this._reportPath(peerId, pc);
             if (pc.connectionState === 'failed' && initiator && pc.restartIce) pc.restartIce();
         };
         // Only the initiator ever offers, so the two sides can never offer at the same time.
@@ -456,7 +467,45 @@ class CallClient {
         const meter = this._meters.get(peerId);
         if (meter) { try { meter.source.disconnect(); } catch { /* ignore */ } this._meters.delete(peerId); }
         if (this.onSpeaking) this.onSpeaking(peerId, false);
+        if (this.paths.delete(peerId) && this.onPath) this.onPath(peerId, null);
         log.debug('WEBRTC', 'Peer removed:', peerId);
+    }
+
+    // Which way the audio actually goes: straight to the peer, or relayed through a TURN server.
+    async _reportPath(peerId, pc) {
+        let stats;
+        try { stats = await pc.getStats(); } catch { return; }
+        if (!this.peers.has(peerId) || this.peers.get(peerId).pc !== pc) return;
+        let pair = null;
+        stats.forEach((report) => {
+            if (report.type === 'transport' && report.selectedCandidatePairId) pair = stats.get(report.selectedCandidatePairId) || pair;
+        });
+        if (!pair) stats.forEach((report) => { if (report.type === 'candidate-pair' && (report.selected || report.nominated) && report.state === 'succeeded') pair = pair || report; });
+        if (!pair) return;
+        const local = stats.get(pair.localCandidateId) || {};
+        const remote = stats.get(pair.remoteCandidateId) || {};
+        const path = local.candidateType === 'relay' || remote.candidateType === 'relay' ? 'relay' : 'direct';
+        log.info('WEBRTC', 'Connected to', this.names.get(peerId) || peerId, 'via', path, '(' + (local.candidateType || '?') + ' → ' + (remote.candidateType || '?') + ')');
+        this.paths.set(peerId, path);
+        if (this.onPath) this.onPath(peerId, path);
+    }
+
+    // Only well-formed entries reach RTCPeerConnection; anything odd falls back to the built-in STUN list.
+    static sanitizeIceServers(list) {
+        if (!Array.isArray(list)) return null;
+        const out = [];
+        for (const item of list) {
+            if (!item || typeof item !== 'object') continue;
+            const hasCredentials = typeof item.username === 'string' && item.username && typeof item.credential === 'string' && item.credential;
+            // Browsers throw on a turn: entry without credentials, so such URLs are dropped rather than the whole call.
+            const urls = (Array.isArray(item.urls) ? item.urls : [item.urls]).filter((u) => typeof u === 'string' && (/^stuns?:/.test(u) || (/^turns?:/.test(u) && hasCredentials)));
+            if (!urls.length) continue;
+            const entry = { urls };
+            if (typeof item.username === 'string') entry.username = item.username;
+            if (typeof item.credential === 'string') entry.credential = item.credential;
+            out.push(entry);
+        }
+        return out.length ? out : null;
     }
 
     // Voice activity: sample each stream's level a few times a second.
@@ -489,7 +538,8 @@ class CallClient {
         }
     }
 }
-CallClient.ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+CallClient.ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];   // used only if the server sends none
+CallClient.ICE_TRANSPORT_POLICY = 'all';   // 'relay' forces every call through TURN (handy for testing a relay)
 CallClient.SPEAKING_THRESHOLD = 0.04;
 
 // ─── JSAIClient: streams answers from /api/ai/chat (Server-Sent Events) ───

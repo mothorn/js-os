@@ -561,10 +561,14 @@ button { font-family: inherit; }
 .ai-inline-code { background: var(--yellow-tint); color: var(--yellow); font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 3px; }
 
 .ai-thinking { color: var(--text-muted); font-style: italic; }
-/* The dots reveal a static ellipsis (animating `content` only works in WebKit/Blink) */
-.ai-dots::after { content: '...'; display: inline-block; width: 0; overflow: hidden; vertical-align: bottom; animation: ai-dots 1.5s steps(4) infinite; }
-@keyframes ai-dots { from { width: 0; } to { width: 1.4em; } }
+/* Three real dots that pulse in turn: no font-dependent clipping, works in every browser */
+.ai-dots { display: inline-flex; align-items: center; gap: 3px; margin-left: 5px; vertical-align: middle; }
+.ai-dots i { display: block; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.25; animation: ai-dot 1.2s ease-in-out infinite; }
+.ai-dots i:nth-child(2) { animation-delay: 0.2s; }
+.ai-dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ai-dot { 0%, 60%, 100% { opacity: 0.25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
 .ai-message.streaming .ai-message-content::after { content: '\2588'; color: var(--yellow); animation: ai-blink 0.8s infinite; }
+.ai-message.streaming .ai-message-content:has(.ai-thinking)::after { content: none; }   /* the dots already say "working" */
 @keyframes ai-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 .ai-stop-btn {
@@ -604,7 +608,8 @@ button { font-family: inherit; }
 .jstube-card-meta { color: var(--text-muted); font-size: 11px; }
 
 .jstube-player-container { background: #000; flex: 0 0 auto; }
-.jstube-player-container iframe { display: block; width: 100%; height: 360px; border: none; }
+.jstube-player-container iframe, .jstube-player-container video { display: block; width: 100%; height: 360px; border: none; background: #000; }
+.jstube-player-container video:focus-visible { outline: 2px solid var(--yellow); outline-offset: -2px; }
 .jstube-video-info { padding: 10px 12px; background: var(--bg-mid); border-bottom: 1px solid var(--border); }
 .jstube-video-title { color: var(--text); font-size: 15px; font-weight: bold; margin-bottom: 4px; }
 .jstube-video-channel { color: var(--yellow); font-size: 12px; }
@@ -612,7 +617,7 @@ button { font-family: inherit; }
 .jstube-player-actions { padding: 8px 12px; }
 .jstube-player { overflow-y: auto; }
 .window.maximized .jstube-player-container { flex: 1 1 auto; min-height: 0; }
-.window.maximized .jstube-player-container iframe { height: 100%; }
+.window.maximized .jstube-player-container iframe, .window.maximized .jstube-player-container video { height: 100%; }
 
 /* ─── 9. JS Call ─── */
 .call-app { width: 700px; }
@@ -686,7 +691,7 @@ button { font-family: inherit; }
     .messages { border-right: none; }
     .messages .chat-image { max-width: 100%; }
     .jstube-thumb { width: 120px; height: 68px; }
-    .jstube-player-container iframe { height: 56vw; max-height: 55vh; }
+    .jstube-player-container iframe, .jstube-player-container video { height: 56vw; max-height: 55vh; }
     .call-user-card { width: 100px; padding: 12px 8px; }
     .error-dialog { width: 100%; }
     .copy-toast { top: auto; bottom: calc(20px + env(safe-area-inset-bottom)); right: 16px; left: 16px; text-align: center; }
@@ -709,4 +714,5 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     .bg-pattern { animation: none; }
+    .ai-dots i { animation: none; opacity: 0.7; }
 }

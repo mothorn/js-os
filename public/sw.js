@@ -1,7 +1,7 @@
 // ─── JS OS service worker: offline shell + notification clicks ───
 // Bump CACHE_NAME whenever the list of shell files changes.
 
-const CACHE_NAME = 'jsos-v4.0.0';
+const CACHE_NAME = 'jsos-v4.1.0';
 
 const SHELL_FILES = [
     '/',

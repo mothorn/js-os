@@ -19,6 +19,8 @@ const { serveStatic } = require('./lib/static');
 const { handleApi } = require('./lib/api');
 const { attachChat } = require('./lib/chat');
 const { attachCall } = require('./lib/call');
+const tube = require('./lib/tube');
+const ice = require('./lib/ice');
 
 const INSTANCE_ID = crypto.randomBytes(4).toString('hex');
 const limiter = new RateLimiter();
@@ -47,8 +49,10 @@ const server = http.createServer(async (req, res) => {
     catch { return sendJson(res, 400, { error: 'Bad request' }); }
 
     // Only the API draws from the per-IP budget; the page and its assets are cheap and cached.
-    if (url.pathname.startsWith('/api/') && !limiter.consume(ip, 'api')) {
-        return sendJson(res, 429, { error: 'Rate limit exceeded. Try again later.' }, { 'Retry-After': '10' });
+    // Video playback fetches many small pieces, so it has its own, larger budget.
+    if (url.pathname.startsWith('/api/')) {
+        const bucket = url.pathname.startsWith('/api/tube/hls/') ? 'media' : 'api';
+        if (!limiter.consume(ip, bucket)) return sendJson(res, 429, { error: 'Rate limit exceeded. Try again later.' }, { 'Retry-After': '10' });
     }
 
     try {
@@ -118,7 +122,8 @@ function shutdown(signal) {
     for (const sockets of [chatSockets, callSockets]) {
         for (const ws of sockets.clients) ws.close(1001, 'Server shutting down');
     }
-    server.close(() => { log('SERVER', 'Shutdown complete'); process.exit(0); });
+    // Drain the relay and release router mappings first; the 3 s backstop still bounds the whole shutdown.
+    ice.stop().catch(() => {}).finally(() => server.close(() => { log('SERVER', 'Shutdown complete'); process.exit(0); }));
     setTimeout(() => process.exit(0), 3000).unref();
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
@@ -149,12 +154,18 @@ function printBanner() {
     console.log(row('OS', os.platform() + ' ' + os.arch()));
     console.log(row('Instance', INSTANCE_ID));
     console.log(row('Gemini', config.gemini.apiKey ? config.gemini.model : 'missing API key', config.gemini.apiKey ? '' : RED));
+    console.log(row('JSTube', tube.playerMode() === 'native' ? 'built-in player (yt-dlp)' : 'YouTube embed'));
+    console.log(row('Calls', ice.summary()));
     console.log(`  ${Y}╚${'═'.repeat(width)}╝${R}`);
     console.log('');
 }
 
-server.listen(config.port, () => {
-    if (config.logFormat === 'pretty') printBanner();
-    if (!config.gemini.apiKey) log('ERROR', 'GEMINI_API_KEY is not set — JS AI is unavailable until it is (see .env.example)');
-    log('SERVER', `Ready on http://localhost:${config.port}`);
+// The relay comes up before the first caller can join, so nobody is handed a STUN-only list by accident.
+ice.start().catch((err) => log('ERROR', 'Call connectivity setup failed: ' + (err.stack || err.message))).then(() => {
+    server.listen(config.port, () => {
+        if (config.logFormat === 'pretty') printBanner();
+        if (!config.gemini.apiKey) log('ERROR', 'GEMINI_API_KEY is not set — JS AI is unavailable until it is (see .env.example)');
+        log('SERVER', `Ready on http://localhost:${config.port}`);
+        tube.prepare();
+    });
 });
